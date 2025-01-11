@@ -1,6 +1,49 @@
+import { useEffect, useState } from "react";
 import ChessBoard from "../components/ChessBoard";
+import { useSocket } from "../hooks/useSocket";
+import { Chess } from "chess.js"
+
+export const INIT_GAME = "init_game"
+export const MOVE = "move"
+export const GAME_OVER = "game_over"
+
 
 export default function Game() {
+
+  const socket = useSocket();
+  const [chess, setChess] = useState(new Chess())
+  const [board, setBoard] = useState(chess.board())
+
+  useEffect(() => {
+    if (!socket) {
+      return;
+    }
+
+    socket.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      console.log(message);
+
+      switch (message.type) {
+        case INIT_GAME:
+          setChess(new Chess())
+          setBoard(chess.board())
+          console.log("Game started");
+          break;
+        case MOVE:
+          const move = message.payload;
+          chess.move(move);
+          setBoard(chess.board());
+          console.log("Move made");
+          break;
+        case GAME_OVER:
+          console.log("Game over");
+          break;
+      }
+    }
+
+  }, [socket])
+
+  if (!socket) return <div>Connecting ....</div>
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       {/* Header section */}
@@ -33,7 +76,7 @@ export default function Game() {
       <div className="flex">
         {/* Chess board */}
         <div className="flex-1">
-          <ChessBoard />
+          <ChessBoard board={board} />
         </div>
 
         {/* Right sidebar */}
@@ -49,7 +92,11 @@ export default function Game() {
               </svg>
             </button>
 
-            <button className="w-full py-4 bg-[#8bc34a] text-white rounded text-xl font-bold hover:bg-[#7cb342]">
+            <button onClick={() => {
+              socket.send(JSON.stringify({
+                type: INIT_GAME,
+              }))
+            }} className="w-full py-4 bg-[#8bc34a] text-white rounded text-xl font-bold hover:bg-[#7cb342]">
               Play
             </button>
 
@@ -69,23 +116,6 @@ export default function Game() {
               <span className="text-xl">🏆</span>
               Tournaments
             </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gray-800">
-        <div className="flex justify-center gap-8 text-gray-400">
-          <div className="flex items-center gap-2">
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
-            <span className="font-mono">200,884</span>
-            <span className="text-sm">PLAYING</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-mono">18,061,471</span>
-            <span className="text-sm">GAMES</span>
           </div>
         </div>
       </div>
